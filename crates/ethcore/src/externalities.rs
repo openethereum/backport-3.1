@@ -24,7 +24,7 @@ use std::{cmp, sync::Arc};
 use trace::{Tracer, VMTracer};
 use types::transaction::UNSIGNED_SENDER;
 use vm::{
-    self, AccessList, ActionParams, ActionValue, CallType, ContractCreateResult,
+    self, AccessList, ActionParams, ActionValue, ActionType, ContractCreateResult,
     CreateContractAddress, EnvInfo, Ext, MessageCallResult, ReturnData, Schedule, TrapKind,
 };
 
@@ -200,7 +200,7 @@ where
                 code: code,
                 code_hash: code_hash,
                 data: Some(data.as_bytes().to_vec()),
-                call_type: CallType::Call,
+                call_type: ActionType::Call,
                 params_type: vm::ParamsType::Separate,
                 access_list: AccessList::default(),
             };
@@ -234,10 +234,8 @@ where
                     let index = self.env_info.number - number.low_u64() - 1;
                     assert!(
                         index < self.env_info.last_hashes.len() as u64,
-                        format!(
-                            "Inconsistent env_info, should contain at least {:?} last hashes",
-                            index + 1
-                        )
+                        "Inconsistent env_info, should contain at least {:?} last hashes",
+                        index + 1
                     );
                     let r = self.env_info.last_hashes[index as usize].clone();
                     trace!(
@@ -277,6 +275,12 @@ where
             }
         };
 
+        let create_type = match address_scheme {
+            CreateContractAddress::FromSenderAndNonce => ActionType::Create,
+            CreateContractAddress::FromSenderSaltAndCodeHash(_) => ActionType::Create2,
+            CreateContractAddress::FromSenderAndCodeHash => ActionType::Create2,
+        };
+
         // prepare the params
         let params = ActionParams {
             code_address: address.clone(),
@@ -289,7 +293,7 @@ where
             code: Some(Arc::new(code.to_vec())),
             code_hash: code_hash,
             data: None,
-            call_type: CallType::None,
+            call_type: create_type,
             params_type: vm::ParamsType::Embedded,
             access_list: self.substate.access_list.clone(),
         };
@@ -343,7 +347,7 @@ where
         value: Option<U256>,
         data: &[u8],
         code_address: &Address,
-        call_type: CallType,
+        call_type: ActionType,
         trap: bool,
     ) -> ::std::result::Result<MessageCallResult, TrapKind> {
         trace!(target: "externalities", "call");
@@ -564,7 +568,7 @@ where
 mod tests {
     use super::*;
     use ethereum_types::{Address, U256};
-    use evm::{CallType, EnvInfo, Ext};
+    use evm::{ActionType, EnvInfo, Ext};
     use state::{State, Substate};
     use std::str::FromStr;
     use test_helpers::get_temp_state;
@@ -761,7 +765,7 @@ mod tests {
             ),
             &[],
             &Address::default(),
-            CallType::Call,
+            ActionType::Call,
             false,
         )
         .ok()

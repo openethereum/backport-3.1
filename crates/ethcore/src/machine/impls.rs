@@ -32,7 +32,7 @@ use types::{
     BlockNumber,
 };
 use vm::{
-    AccessList, ActionParams, ActionValue, CallType, CreateContractAddress, EnvInfo, ParamsType,
+    AccessList, ActionParams, ActionValue, ActionType, CreateContractAddress, EnvInfo, ParamsType,
     Schedule,
 };
 
@@ -176,7 +176,7 @@ impl EthereumMachine {
         value: Option<ActionValue>,
         gas: U256,
         data: Option<Vec<u8>>,
-        call_type: Option<CallType>,
+        call_type: Option<ActionType>,
     ) -> Result<Vec<u8>, Error> {
         let env_info = {
             let mut env_info = block.env_info();
@@ -197,7 +197,7 @@ impl EthereumMachine {
             code,
             code_hash,
             data,
-            call_type: call_type.unwrap_or(CallType::Call),
+            call_type: call_type.unwrap_or(ActionType::Call),
             params_type: ParamsType::Separate,
             access_list: AccessList::default(),
         };
